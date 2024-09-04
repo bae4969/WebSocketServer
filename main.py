@@ -21,7 +21,7 @@ async def handler_none(ws:websockets.WebSocketServerProtocol):
 
 
 async def handler_ping(ws:websockets.WebSocketServerProtocol):
-	rep_data: dict = { "type": "rep", "result": 200, "msg": "good" }
+	rep_data: dict = { "type": "ping", "result": 200, "msg": "good" }
 	await safe_send(ws, json.dumps(rep_data))
 
 
@@ -160,7 +160,8 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 			except:
 				await handler_none(ws)
 				
-
+	except asyncio.TimeoutError as ex:
+		disconnect_log_msg = ex.__str__()
 	except Exception as ex:
 		disconnect_log_msg = ex.__str__()
 	finally:
