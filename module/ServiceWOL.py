@@ -2,15 +2,11 @@ from doc import Define
 import struct
 import socket
 
-targetLists:dict = {
-	'Bae-DeskTop' : ['135.135.135.100', 'D8-5E-D3-E5-48-81'],
-}
-
 def ExecuteWOL(target_name:str) -> bool:
 	try:
-		ip_mac:list = targetLists[target_name]
+		ip_and_mac:list = Define.WOL_DEVICE_LIST[target_name]
 
-		addrs = ip_mac[1].split("-")
+		addrs = ip_and_mac[1].split("-")
 		hw_addr = struct.pack(
 			"BBBBBB",
 			int(addrs[0], 16),
@@ -25,7 +21,7 @@ def ExecuteWOL(target_name:str) -> bool:
 
 		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-		s.sendto(magic, (ip_mac[0], 9))
+		s.sendto(magic, (ip_and_mac[0], 9))
 		s.close()
 
 		return True
@@ -34,4 +30,4 @@ def ExecuteWOL(target_name:str) -> bool:
 		return False
 
 def GetWOLList() -> list:
-	return [*targetLists]
+	return [*Define.WOL_DEVICE_LIST]
