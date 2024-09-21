@@ -5,40 +5,39 @@ from datetime import datetime as DateTime
 
 import module.Util as Util
 import module.SqlManager as SqlManager
+import module.Auth as Auth
 import module.ServiceWOL as WOL
+import module.StockTickerManager as STM
 
 
 
 send_lock = asyncio.Lock()
-
-async def safe_send(ws, message):
+async def safe_send(ws, message) -> None:
 	async with send_lock:
 		await ws.send(message)
 
 
-async def handler_none(ws:websockets.WebSocketServerProtocol):
-	rep_data: dict = { "type": "rep", "result": 400, "msg": "Invalid service" }
-	await safe_send(ws, json.dumps(rep_data))
-
-
-async def handler_ping(ws:websockets.WebSocketServerProtocol, client_info:dict):
-	rep_data: dict = { "type": "ping", "result": 200, "msg": "good" }
-	await safe_send(ws, json.dumps(rep_data))
-
-
-async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, req_data:json) -> dict:
+async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, req_type:str, req_dict:dict) -> None:
 	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
 	try:
-		if req_data["type"] == "login":
-			is_good, msg, info = await SqlManager.IsExistUser(req_data["data"]["id"], req_data["data"]["pw"])
-			client_info["is_good_man"] = is_good
-			client_info.update(info)
-			rep_data["result"] = 200 if is_good == True else 400
-			rep_data["msg"] = msg
-   
+		if req_type == "login":
+			result, msg, rep_dict = await Auth.LoginUser(client_info, req_dict)
+		
+		elif req_type == "logout":
+			result, msg, rep_dict = await Auth.LogoutUser(client_info, req_dict)
+
+		elif req_type == "ping":
+			result, msg, rep_dict = await Auth.PingUser(client_info, req_dict)
+
 		else:
-			rep_data["result"] = 400
-			rep_data["msg"] = "Fail to authorization"
+			result = 500
+			msg = "invalid service type"
+			rep_dict = {}
+
+		
+		rep_data["result"] = result
+		rep_data["msg"] = msg
+		rep_data["data"] = rep_dict
 
 	finally:
 		# 지연처리
@@ -48,70 +47,51 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 		return client_info
 	
 
-async def handler_test(ws:websockets.WebSocketServerProtocol, client_info:dict, req_data:json):
+async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, req_type:str, req_dict:dict) -> None:
 	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
 	try:
-		if req_data["type"] == "type_list":
-			rep_data["result"] = 200
-			rep_data["msg"] = "good"
-			rep_data["data"] = [
-				"TEST1",
-				"wol_device",
-			]
-			
-		elif req_data["type"] == "TEST1":
-			rep_data["result"] = 200
-			rep_data["msg"] = "good"
-			rep_data["data"] = [
-				"TEST2",
-			]
+		if req_type == "list" and client_info["user_level"] < 2:
+			result, msg, rep_dict = await WOL.GetWOLList(client_info, req_dict)
 
-		elif req_data["type"] == "TEST2":
-			rep_data["result"] = 200
-			rep_data["msg"] = "good"
-			rep_data["data"] = [
-				"TEST2",
-			]
+		elif req_type == "execute" and client_info["user_level"] < 2:
+			result, msg, rep_dict = await WOL.ExecuteWOL(client_info, req_dict)
 
 		else:
-			rep_data["result"] = 400
-			rep_data["msg"] = "invalid type"
+			result = 500
+			msg = "invalid service type"
+			rep_dict = {}
+
+		
+		rep_data["result"] = result
+		rep_data["msg"] = msg
+		rep_data["data"] = rep_dict
 
 	finally:
 		await safe_send(ws, json.dumps(rep_data))
 
 
-async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, req_data:json):
+async def handler_stockTickerManager(ws:websockets.WebSocketServerProtocol, client_info:dict, req_type:str, req_dict:dict) -> None:
 	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
 	try:
-		is_manager_level = client_info["user_level"] < 2 and client_info["user_state"] == 0
-		if req_data["type"] == "type_list" and is_manager_level:
-			rep_data["result"] = 200
-			rep_data["msg"] = "good"
-			rep_data["data"] = [
-				"wol_list",
-				"wol_device",
-			]
-			
-		elif req_data["type"] == "wol_list" and is_manager_level:
-			rep_data["result"] = 200
-			rep_data["msg"] = "good"
-			rep_data["data"] = WOL.GetWOLList()
+		if req_type == "regi_list" and client_info["user_level"] < 2:
+			result, msg, rep_dict = await STM.GetRegistedQueryList(client_info, req_dict)
 
-		elif req_data["type"] == "wol_device" and is_manager_level:
-			if WOL.ExecuteWOL(req_data["data"]["device_name"]):
-				rep_data["result"] = 200
-				rep_data["msg"] = "good"
-			else:
-				rep_data["result"] = 500
-				rep_data["msg"] = "server_error"
+		elif req_type == "tot_list" and client_info["user_level"] < 4:
+			result, msg, rep_dict = await STM.GetTotalValidList(client_info, req_dict)
 
 		else:
-			rep_data["result"] = 400
-			rep_data["msg"] = "invalid type"
+			result = 500
+			msg = "invalid service type"
+			rep_dict = {}
+
+		
+		rep_data["result"] = result
+		rep_data["msg"] = msg
+		rep_data["data"] = rep_dict
 
 	finally:
 		await safe_send(ws, json.dumps(rep_data))
+
 
 
 async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
@@ -127,34 +107,32 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 	
 	disconnect_log_msg = "normal"
 	try:
-		auth_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
-		auth_data = json.loads(auth_msg)
-		if path == "/bae" and auth_data["service"] == "auth":
-			client_info = await handler_auth(ws, client_info, auth_data)
-		else:
-			await asyncio.sleep(1)
-		
+		req_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
+		req_data = json.loads(req_msg)
+		req_service:str = req_data["service"]
+		req_type:str = req_data["type"]
+		req_dict:dict = req_data["data"]
+		await handler_auth(ws, client_info, req_type, req_dict)
 		if client_info["is_good_man"] == False:
-			raise Exception("Invalid authorization")
-		else:
-			await SqlManager.LoginUser(client_info)
+			raise Exception("invalid authorization")
 
+		Util.InsertLog("WebSocketServer", "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' login [ {client_info['ws_id']} | {client_info['ws_ip']} ]")
 		while True:
 			try:
 				req_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
 				req_data = json.loads(req_msg)
+				req_service:str = req_data["service"]
+				req_type:str = req_data["type"]
+				req_dict:dict = req_data["data"]
 				
-				if req_data["service"] == "test":
-					await handler_test(ws, client_info, req_data)
-				
-				elif req_data["service"] == "wol":
-					await handler_wol(ws, client_info, req_data)
-	 
-				elif req_data["service"] == "ping":
-					await handler_ping(ws, client_info)
+				if req_service== "auth":
+					await handler_auth(ws, client_info, req_type, req_dict)
+
+				elif req_service == "wol":
+					await handler_wol(ws, client_info, req_type, req_dict)
 					
 				else:
-					await handler_none(ws)
+					await handler_auth(ws, client_info, "", {})
 					
 				client_info["ping"] = DateTime.now()
 
@@ -163,7 +141,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 				if delta_sec > 10:
 					raise Exception("Detected late ping")
 			except:
-				await handler_none(ws)
+				await handler_auth(ws, client_info, "", {})
 				
 	except asyncio.TimeoutError as ex:
 		disconnect_log_msg = ex.__str__()
