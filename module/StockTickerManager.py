@@ -32,7 +32,7 @@ async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, st
 	return 0, "success", { "list" : last_query_list }
 
 
-async def GetTotalValidList(client_info:dict, req_dict:dict):
+async def GetTotalValidList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 	stock_sql_query_str = """
 		SELECT 'stock' AS table_type, stock_code, stock_name_kr
 		FROM KoreaInvest.stock_info
