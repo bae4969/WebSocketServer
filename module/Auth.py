@@ -41,7 +41,7 @@ async def LoginUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 		return 400, "fail to insert", {}
 
 
-async def LogoutUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
+async def LogoutUser(client_info:dict) -> tuple[int, str, dict]:
 	query_str_list = [f"""DELETE FROM Blog.user_login WHERE user_index='{client_info["user_index"]}'"""]
 	result = await SqlManager.sql_manager.Set(query_str_list)
 	if result:
@@ -50,7 +50,7 @@ async def LogoutUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 		return 400, "fail to delete", {}
 	
 
-async def PingUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
+async def PingUser(client_info:dict) -> tuple[int, str, dict]:
 	query_str_list = [f"""UPDATE Blog.user_login SET user_ping_datetime=NOW() WHERE user_index='{client_info["user_index"]}'"""]
 	result = await SqlManager.sql_manager.Set(query_str_list)
 	if result:
