@@ -7,7 +7,7 @@ import socket
 
 
 async def ExecuteWOL(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	if client_info["user_level"] < 2:
+	if client_info["user_level"] > 1:
 		return 400, "invalid permission", {}
 
 
@@ -32,12 +32,12 @@ async def ExecuteWOL(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 	s.sendto(magic, (ip_and_mac[0], 9))
 	s.close()
 
-	return 0, "success", {}
+	return 200, "success", {}
 
 
 async def GetWOLList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	if client_info["user_level"] < 2:
+	if client_info["user_level"] > 1:
 		return 400, "invalid permission", {}
 	
 	
-	return 0, "success", { "list" : [*Define.WOL_DEVICE_LIST] }
+	return 200, "success", { "list" : [*Define.WOL_DEVICE_LIST] }

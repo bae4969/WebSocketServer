@@ -5,6 +5,9 @@ from datetime import datetime as DateTime
 
 
 async def LoginUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
+	if "id" not in req_dict or "pw" not in req_dict:
+		return 500, "id or pw is not exist", {}
+
 	id_str = req_dict["id"].replace("'", "")
 	pw_str = req_dict["pw"].replace("'", "")
 	query_str = f"SELECT user_index, user_level, user_state FROM Blog.user_list WHERE user_id='{id_str}' and user_pw='{pw_str}'"
@@ -35,7 +38,7 @@ async def LoginUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 	if is_good_login:
 		query_str_list = [f"""UPDATE Blog.user_list SET user_last_action_datetime=NOW() WHERE user_index='{client_info["user_index"]}'"""]
 		await SqlManager.sql_manager.Set(query_str_list)
-		return 0, "success", {}
+		return 200, "success", {}
 	
 	else:
 		return 400, "fail to insert", {}
@@ -45,7 +48,7 @@ async def LogoutUser(client_info:dict) -> tuple[int, str, dict]:
 	query_str_list = [f"""DELETE FROM Blog.user_login WHERE user_index='{client_info["user_index"]}'"""]
 	result = await SqlManager.sql_manager.Set(query_str_list)
 	if result:
-		return 0, "success", {}
+		return 200, "success", {}
 	else:
 		return 400, "fail to delete", {}
 	
@@ -55,7 +58,7 @@ async def PingUser(client_info:dict) -> tuple[int, str, dict]:
 	result = await SqlManager.sql_manager.Set(query_str_list)
 	if result:
 		client_info["ping"] = DateTime.now()
-		return 0, "success", {}
+		return 200, "success", {}
 	else:
 		return 400, "fail to update", {}
 

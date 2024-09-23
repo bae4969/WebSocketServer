@@ -6,7 +6,7 @@ from datetime import timedelta as TimeDelta
 
 
 async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	if client_info["user_level"] < 4:
+	if client_info["user_level"] > 3:
 		return 400, "invalid permission", {}
 	
 	
@@ -38,11 +38,11 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 
 	last_query_list = await SqlManager.sql_manager.Get(query_str)
 
-	return 0, "success", { "list" : last_query_list }
+	return 200, "success", { "list" : last_query_list }
 	
 
 async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	if client_info["user_level"] < 4:
+	if client_info["user_level"] > 3:
 		return 400, "invalid permission", {}
 	
 
@@ -71,11 +71,11 @@ async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, st
 
 	last_query_list = await SqlManager.sql_manager.Get(query_str)
 
-	return 0, "success", { "list" : last_query_list }
+	return 200, "success", { "list" : last_query_list }
 
 
 async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	if client_info["user_level"] < 2:
+	if client_info["user_level"] > 1:
 		return 400, "invalid permission", {}
 	
 
@@ -206,13 +206,13 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 
 	is_good = await SqlManager.sql_manager.Set(query_str_list)
 	if is_good:
-		return 0, "success", {}
+		return 200, "success", {}
 	else:
 		return 500, "fail to update", {}
 
 
 async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	if client_info["user_level"] < 4:
+	if client_info["user_level"] > 3:
 		return 400, "invalid permission", {}
 	
 	table_type = req_dict["table_type"]
@@ -234,7 +234,7 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 
 	candle_data = await SqlManager.sql_manager.Get(query_str)
 	
-	return 0, "success", { "candle" : candle_data }
+	return 200, "success", { "candle" : candle_data }
 
 	
 

@@ -3,6 +3,7 @@ import asyncio
 import json
 from datetime import datetime as DateTime
 
+import doc.Define as Define
 import module.Util as Util
 import module.SqlManager as SqlManager
 import module.Auth as Auth
@@ -30,14 +31,11 @@ async def safe_recv(ws:websockets.WebSocketServerProtocol):
 
 
 async def handler_none(ws:websockets.WebSocketServerProtocol) -> None:
-	rep_data: dict = { "type": "rep", "result": 400, "msg": "invalid msg" }
+	rep_data: dict = { "type": "rep", "result": 400, "msg": "invalid msg", "data":{} }
 	await safe_send(ws, json.dumps(rep_data))
 
-async def handler_ping(ws:websockets.WebSocketServerProtocol, client_info:dict) -> None:
-	await Auth.PingUser(client_info)
-
 async def handler_login(ws:websockets.WebSocketServerProtocol, client_info:dict, req_dict:dict) -> None:
-	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
+	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error", "data":{} }
 	try:
 		result, msg, rep_dict = await Auth.LoginUser(client_info, req_dict)		
 		rep_data["result"] = result
@@ -51,7 +49,7 @@ async def handler_login(ws:websockets.WebSocketServerProtocol, client_info:dict,
 		await safe_send(ws, json.dumps(rep_data))
 
 async def handler_logout(ws:websockets.WebSocketServerProtocol, client_info:dict) -> None:
-	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
+	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error", "data":{} }
 	try:
 		result, msg, rep_dict = await Auth.LogoutUser(client_info)		
 		rep_data["result"] = result
@@ -64,7 +62,7 @@ async def handler_logout(ws:websockets.WebSocketServerProtocol, client_info:dict
 
 
 async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
-	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
+	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error", "data":{} }
 	try:
 		if req_work == "list":
 			result, msg, rep_dict = await WOL.GetWOLList(client_info, req_dict)
@@ -86,7 +84,7 @@ async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, r
 		await safe_send(ws, json.dumps(rep_data))
 
 async def handler_stm(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
-	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error" }
+	rep_data: dict = { "type": "rep", "result": 500, "msg": "server_error", "data":{} }
 	try:
 		if req_work == "get_tot_list":
 			result, msg, rep_dict = await STM.GetTotalList(client_info, req_dict)
@@ -135,7 +133,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 			raise Exception("invalid authorization")
 
 		Util.InsertLog("WebSocketServer", "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' login [ {client_info['ws_id']} | {client_info['ws_ip']} ]")
-		while True:
+		while ws.closed == False:
 			try:
 				req_data = await safe_recv(ws)
 				req_type:str = req_data["type"]
@@ -144,7 +142,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 				req_dict:dict = req_data["data"]
 				
 				if req_service== "ping":
-					await Auth.PingUser(client_info, req_dict)
+					await Auth.PingUser(client_info)
 
 				elif req_service == "wol":
 					await handler_wol(ws, client_info, req_work, req_dict)
@@ -158,13 +156,18 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 
 			except:
 				pass
+						
+			delta_sec = (DateTime.now() - client_info["ping"]).seconds
+			if delta_sec > Define.WS_LATE_PING_SEC:
+				raise Exception("Detected late ping")
+
 				
 	except Exception as ex:
-		disconnect_log_msg = ex.__str__()
+		disconnect_log_msg = str(ex)
 	finally:
 		try:
 			if client_info["user_index"] >= 0:
-				handler_logout()
+				await handler_logout(ws, client_info)
 		except:
 			pass
 		Util.InsertLog(
