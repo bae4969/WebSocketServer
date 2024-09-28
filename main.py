@@ -12,6 +12,7 @@ import module.StockTickerManager as STM
 
 
 
+log_name:str = "WebSocketServer"
 send_lock = asyncio.Lock()
 async def safe_send(ws:websockets.WebSocketServerProtocol, message) -> None:
 	async with send_lock:
@@ -41,10 +42,15 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 
 		elif req_work == "logout":
 			result, msg, rep_dict = await Auth.LogoutUser(client_info)
-		
+
 		elif req_work == "ping":
-			result, msg, rep_dict = await Auth.LogoutUser(client_info)
-			
+			result, msg, rep_dict = await Auth.PingUser(client_info)
+
+		elif req_work == "varifiy":
+			result, msg, rep_dict = await Auth.VarifiyUser(client_info)
+			if client_info["is_good_man"] == True:
+				return
+
 		else:
 			result = 400
 			msg = "invalid service type"
@@ -113,8 +119,9 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 	# 클라이언트의 IP 주소 얻기
 	client_info = {
 		"ws_object": ws,
-		"ws_id" : id(ws),
-		"ws_ip": ws.remote_address[0],
+		"login_index" : id(ws),
+		"login_ip" : ws.remote_address[0],
+		"login_env" : "--",
 		"is_good_man": False,
 		"user_id" : "(empty)",
 		"user_index" : -1,
@@ -122,8 +129,8 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 		"user_state" : 100,
 		"ping": DateTime.now(),
 	}
-	log_postfix = f"{client_info['ws_id']} | {client_info['ws_ip']}"
-	Util.InsertLog("WebSocketServer", "N", f"Client connected [ {log_postfix} ]")
+	log_postfix = f"{client_info['login_index']} | {client_info['login_env']} | {client_info['login_ip']}"
+	Util.InsertLog(log_name, "N", f"Client connected [ {log_postfix} ]")
 	
 	disconnect_log_msg = "normal"
 	try:
@@ -132,18 +139,22 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 		if client_info["is_good_man"] == False:
 			raise Exception("invalid authorization")
 
-		Util.InsertLog("WebSocketServer", "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' login [ {log_postfix} ]")
-		while ws.closed == False:
+		Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' login [ {log_postfix} ]")
+		while ws.closed == False and client_info["is_good_man"] == True:
 			try:
 				req_data = await safe_recv(ws)
 				req_service:str = req_data["service"]
 				req_work:str = req_data["work"]
 				req_dict:dict = req_data["data"]
-				
 				if req_service == "late":
-					pass
-			
-				elif req_service == "auth":
+					continue
+
+				await handler_auth(ws, client_info, "varifiy", {})
+				if client_info["is_good_man"] == False:
+					Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' fail to varifiy [ {log_postfix} ]")
+					break
+				
+				if req_service == "auth":
 					await handler_auth(ws, client_info, req_work, req_dict)
 
 				elif req_service == "wol":
@@ -169,11 +180,11 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 		try:
 			if client_info["user_index"] >= 0:
 				await handler_auth(ws, "auth", "logout", client_info)
-				Util.InsertLog("WebSocketServer", "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' logout [ {log_postfix} ]")
+				Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' logout [ {log_postfix} ]")
 		except:
 			pass
 		Util.InsertLog(
-			"WebSocketServer",
+			log_name,
 			"N",
 			f"Client disconnected [ {log_postfix} | {disconnect_log_msg} ]",
 		)
@@ -181,10 +192,10 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 
 if __name__ == "__main__":
 	if asyncio.get_event_loop().run_until_complete(SqlManager.InitSql()) == False:
-		Util.InsertLog("WebSocketServer", "N", f"Fail to init login table")
+		Util.InsertLog(log_name, "N", f"Fail to init login table")
 	
 	else:
 		start_server = websockets.serve(handler_main, "0.0.0.0", 49693)
-		Util.InsertLog("WebSocketServer", "N", f"Server start at port 49693")
+		Util.InsertLog(log_name, "N", f"Server start at port 49693")
 		asyncio.get_event_loop().run_until_complete(start_server)
 		asyncio.get_event_loop().run_forever()

@@ -36,9 +36,11 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 	offset = req_dict["offset"]
 	query_str += f" LIMIT 100 OFFSET {(offset - 1) * 100}"
 
-	last_query_list = await SqlManager.sql_manager.Get(query_str)
-
-	return 200, "success", { "list" : last_query_list }
+	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+	if sql_code == 0:
+		return 200, "success", { "list" : sql_data }
+	else:
+		return 500, "fail to get data", { "list" : sql_data }
 	
 
 async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
@@ -69,9 +71,11 @@ async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, st
 	else:
 		query_str = stock_sql_query_str + " UNION " + coin_sql_query_str
 
-	last_query_list = await SqlManager.sql_manager.Get(query_str)
-
-	return 200, "success", { "list" : last_query_list }
+	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+	if sql_code == 0:
+		return 200, "success", { "list" : sql_data }
+	else:
+		return 500, "fail to get data", { "list" : sql_data }
 
 
 async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
@@ -91,9 +95,11 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 			FROM KoreaInvest.stock_info
 			WHERE stock_code IN ({code_strings}) AND stock_update > NOW() - INTERVAL 2 WEEK
 		"""
-		query_ret_list = await SqlManager.sql_manager.Get(query_str)
+		sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+		if sql_code != 0:
+			return 500, "fail to get data", {}
 
-		for query_ret in query_ret_list:
+		for query_ret in sql_data:
 			code = query_ret[0]
 			query_type = code_type_dict[code]
 			market = query_ret[1]
@@ -162,9 +168,11 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 			FROM Bithumb.coin_info
 			WHERE coin_code IN ({code_strings}) AND coin_update > NOW() - INTERVAL 2 WEEK
 		"""
-		query_ret_list = await SqlManager.sql_manager.Get(query_str)
+		sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+		if sql_code != 0:
+			return 500, "fail to get data", {}
 
-		for query_ret in query_ret_list:
+		for query_ret in sql_data:
 			code = query_ret[0]
 			query_type = code_type_dict[code]
 
@@ -204,8 +212,8 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 		values_str = ', '.join([f"({', '.join(map(str, record))})" for record in coin_insert_list])
 		query_str_list.append(f"""INSERT INTO Bithumb.coin_last_ws_query VALUES {values_str}""")
 
-	is_good = await SqlManager.sql_manager.Set(query_str_list)
-	if is_good:
+	sql_code = await SqlManager.sql_manager.Set(query_str_list)
+	if sql_code == 0:
 		return 200, "success", {}
 	else:
 		return 500, "fail to update", {}
@@ -232,9 +240,11 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 		BETWEEN CONCAT({year}, LPAD({week_from}, 2, '0')) AND CONCAT({year}, LPAD({week_to}, 2, '0'));
 	"""
 
-	candle_data = await SqlManager.sql_manager.Get(query_str)
-	
-	return 200, "success", { "candle" : candle_data }
+	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+	if sql_code == 0:
+		return 200, "success", { "candle" : sql_data }
+	else:
+		return 500, "fail to get data", { "candle" : sql_data }
 
 	
 
