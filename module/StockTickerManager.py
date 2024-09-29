@@ -21,12 +21,8 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK
 	"""
 
-	region = ""
-	offset = 0
-	if "region" in req_dict:
-		region = req_dict["region"]
-	if "offset" in req_dict:
-		offset = int(req_dict["offset"])
+	region = Util.TryGetDictStr(req_dict, "region", "")
+	offset = Util.TryGetDictInt(req_dict, "offset", 0)
 
 	if region == "KR":
 		query_str = stock_sql_query_str + " AND stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX'"
@@ -65,12 +61,8 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND coin_name_kr LIKE '%{search_str}%'
 	"""
 
-	region = ""
-	offset = 0
-	if "region" in req_dict:
-		region = req_dict["region"]
-	if "offset" in req_dict:
-		offset = int(req_dict["offset"])
+	region = Util.TryGetDictStr(req_dict, "region", "")
+	offset = Util.TryGetDictInt(req_dict, "offset", 0)
 
 	if region == "KR":
 		query_str = stock_sql_query_str + " AND stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX'"
