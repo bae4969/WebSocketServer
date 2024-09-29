@@ -179,7 +179,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 	finally:
 		try:
 			if client_info["user_index"] >= 0:
-				await handler_auth(ws, "auth", "logout", client_info)
+				await handler_auth(ws, client_info, "logout", {})
 				Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' logout [ {log_postfix} ]")
 		except:
 			pass
