@@ -89,10 +89,13 @@ async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, r
 		await safe_send(ws, json.dumps(rep_data))
 
 async def handler_stm(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
-	rep_data: dict = { "service": "wtm", "result": 500, "msg": "server_error", "data":{} }
+	rep_data: dict = { "service": "stm", "result": 500, "msg": "server_error", "data":{} }
 	try:
 		if req_work == "get_tot_list":
 			result, msg, rep_dict = await STM.GetTotalList(client_info, req_dict)
+
+		elif req_work == "search_tot_list":
+			result, msg, rep_dict = await STM.SearchTotalList(client_info, req_dict)
 
 		elif req_work == "get_regi_list":
 			result, msg, rep_dict = await STM.GetRegistedQueryList(client_info, req_dict)

@@ -13,17 +13,21 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 	stock_sql_query_str = """
 		SELECT 'Stock' AS table_type, stock_code, stock_name_kr
 		FROM KoreaInvest.stock_info
-		ORDER BY stock_code
 		WHERE stock_update > NOW() - INTERVAL 2 WEEK
 	"""
 	coin_sql_query_str = """
 		SELECT 'Coin' AS table_type, coin_code, coin_name_kr
 		FROM Bithumb.coin_info
-		ORDER BY coin_code
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK
 	"""
 
-	region = req_dict["region"]
+	region = ""
+	offset = 0
+	if "region" in req_dict:
+		region = req_dict["region"]
+	if "offset" in req_dict:
+		offset = int(req_dict["offset"])
+
 	if region == "KR":
 		query_str = stock_sql_query_str + " AND stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX'"
 	elif region == "US":
@@ -33,8 +37,51 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 	else:
 		query_str = stock_sql_query_str + " UNION " + coin_sql_query_str
 
-	offset = req_dict["offset"]
-	query_str += f" LIMIT 100 OFFSET {(offset - 1) * 100}"
+	query_str += f" ORDER BY stock_code LIMIT 100 OFFSET {offset * 100}"
+
+	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+	if sql_code == 0:
+		return 200, "success", { "list" : sql_data }
+	else:
+		return 500, "fail to get data", { "list" : sql_data }
+	
+	
+async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
+	if client_info["user_level"] > 3:
+		return 400, "invalid permission", {}
+	
+	search_str = req_dict["search_keyword"].replace("'", "")
+	if len(search_str) < 2:
+		return 400, "keyword must be longer than 1", {}
+	
+	stock_sql_query_str = f"""
+		SELECT 'Stock' AS table_type, stock_code, stock_name_kr
+		FROM KoreaInvest.stock_info
+		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND stock_name_kr LIKE '%{search_str}%'
+	"""
+	coin_sql_query_str = f"""
+		SELECT 'Coin' AS table_type, coin_code, coin_name_kr
+		FROM Bithumb.coin_info
+		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND coin_name_kr LIKE '%{search_str}%'
+	"""
+
+	region = ""
+	offset = 0
+	if "region" in req_dict:
+		region = req_dict["region"]
+	if "offset" in req_dict:
+		offset = int(req_dict["offset"])
+
+	if region == "KR":
+		query_str = stock_sql_query_str + " AND stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX'"
+	elif region == "US":
+		query_str = stock_sql_query_str + " AND stock_market='NYSE' OR stock_market='NASDAQ' OR stock_market='AMEX'"
+	elif region == "COIN":
+		query_str = coin_sql_query_str
+	else:
+		query_str = stock_sql_query_str + " UNION " + coin_sql_query_str
+
+	query_str += f" ORDER BY stock_code LIMIT 100 OFFSET {offset * 100}"
 
 	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
 	if sql_code == 0:
@@ -61,7 +108,10 @@ async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, st
 		ON Q.coin_code = I.coin_code
 	"""
 	
-	region = req_dict["region"]
+	region = ""
+	if "region" in req_dict:
+		region = req_dict["region"]
+		
 	if region == "KR":
 		query_str = stock_sql_query_str + " WHERE I.stock_market='KOSPI' OR I.stock_market='KOSDAQ' OR I.stock_market='KONEX'"
 	elif region == "US":
