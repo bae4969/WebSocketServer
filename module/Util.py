@@ -120,25 +120,25 @@ def InsertLog(name:str, type:str, msg:str) -> None:
 
 
 
-def TryGetDictStr(dict, key, default_str="") -> str:
+def TryGetDictStr(dict, key, default_value="") -> str:
     try:
         return dict[key]
     except:
-        return default_str
+        return default_value
     
 
-def TryGetDictInt(dict, key, default_str=0) -> int:
+def TryGetDictInt(dict, key, default_value=0) -> int:
     try:
         return int(dict[key])
     except:
-        return default_str
+        return default_value
     
 
-def TryGetDictFloat(dict, key, default_str=0.0) -> float:
+def TryGetDictFloat(dict, key, default_value=0.0) -> float:
     try:
         return float(dict[key])
     except:
-        return default_str
+        return default_value
     
 
 
