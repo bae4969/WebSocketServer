@@ -10,24 +10,32 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 		return 400, "invalid permission", {}
 	
 	
-	stock_sql_query_str = """
+	stock_sql_query_str = f"""
 		SELECT 'Stock' AS table_type, stock_code, stock_name_kr
 		FROM KoreaInvest.stock_info
 		WHERE stock_update > NOW() - INTERVAL 2 WEEK
 	"""
-	coin_sql_query_str = """
+	coin_sql_query_str = f"""
 		SELECT 'Coin' AS table_type, coin_code, coin_name_kr
 		FROM Bithumb.coin_info
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK
 	"""
 
-	region = Util.TryGetDictStr(req_dict, "region", "")
-	offset = Util.TryGetDictInt(req_dict, "offset", 0)
+	region = Util.TryGetDictStr(req_dict, "stock_region", "")
+	type = Util.TryGetDictStr(req_dict, "stock_type", "")
+	offset = Util.TryGetDictInt(req_dict, "list_offset", 0)
+
+	if type == "STOCK":
+		stock_sql_query_str += " AND stock_type='STOCK'"
+	elif type == "ETF":
+		stock_sql_query_str += " AND stock_type='ETF'"
+	elif type == "ETN":
+		stock_sql_query_str += " AND stock_type='ETN'"
 
 	if region == "KR":
-		query_str = stock_sql_query_str + " AND stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX'"
+		query_str = stock_sql_query_str + " AND (stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX')"
 	elif region == "US":
-		query_str = stock_sql_query_str + " AND stock_market='NYSE' OR stock_market='NASDAQ' OR stock_market='AMEX'"
+		query_str = stock_sql_query_str + " AND (stock_market='NYSE' OR stock_market='NASDAQ' OR stock_market='AMEX')"
 	elif region == "COIN":
 		query_str = coin_sql_query_str
 	else:
@@ -61,13 +69,21 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND coin_name_kr LIKE '%{search_str}%'
 	"""
 
-	region = Util.TryGetDictStr(req_dict, "region", "")
-	offset = Util.TryGetDictInt(req_dict, "offset", 0)
+	region = Util.TryGetDictStr(req_dict, "stock_region", "")
+	type = Util.TryGetDictStr(req_dict, "stock_type", "")
+	offset = Util.TryGetDictInt(req_dict, "list_offset", 0)
+
+	if type == "STOCK":
+		stock_sql_query_str += " AND stock_type='STOCK'"
+	elif type == "ETF":
+		stock_sql_query_str += " AND stock_type='ETF'"
+	elif type == "ETN":
+		stock_sql_query_str += " AND stock_type='ETN'"
 
 	if region == "KR":
-		query_str = stock_sql_query_str + " AND stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX'"
+		query_str = stock_sql_query_str + " AND (stock_market='KOSPI' OR stock_market='KOSDAQ' OR stock_market='KONEX')"
 	elif region == "US":
-		query_str = stock_sql_query_str + " AND stock_market='NYSE' OR stock_market='NASDAQ' OR stock_market='AMEX'"
+		query_str = stock_sql_query_str + " AND (stock_market='NYSE' OR stock_market='NASDAQ' OR stock_market='AMEX')"
 	elif region == "COIN":
 		query_str = coin_sql_query_str
 	else:
