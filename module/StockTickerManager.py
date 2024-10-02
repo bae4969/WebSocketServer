@@ -11,12 +11,12 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 	
 	
 	stock_sql_query_str = f"""
-		SELECT 'Stock' AS table_type, stock_code, stock_name_kr
+		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market
 		FROM KoreaInvest.stock_info
 		WHERE stock_update > NOW() - INTERVAL 2 WEEK
 	"""
 	coin_sql_query_str = f"""
-		SELECT 'Coin' AS table_type, coin_code, coin_name_kr
+		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market
 		FROM Bithumb.coin_info
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK
 	"""
@@ -59,14 +59,14 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 		return 400, "keyword must be longer than 1", {}
 	
 	stock_sql_query_str = f"""
-		SELECT 'Stock' AS table_type, stock_code, stock_name_kr
+		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market
 		FROM KoreaInvest.stock_info
-		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND stock_name_kr LIKE '%{search_str}%'
+		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND (stock_code LIKE '%{search_str}%' OR stock_name_kr LIKE '%{search_str}%' OR stock_name_en LIKE '%{search_str}%')
 	"""
 	coin_sql_query_str = f"""
-		SELECT 'Coin' AS table_type, coin_code, coin_name_kr
+		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market
 		FROM Bithumb.coin_info
-		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND coin_name_kr LIKE '%{search_str}%'
+		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND (coin_code LIKE '%{search_str}%' OR coin_name_kr LIKE '%{search_str}%' OR coin_name_en LIKE '%{search_str}%')
 	"""
 
 	region = Util.TryGetDictStr(req_dict, "stock_region", "")
@@ -104,13 +104,13 @@ async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, st
 	
 
 	stock_sql_query_str = """
-		SELECT 'Stock' AS table_type, Q.stock_code, Q.query_type, I.stock_name_kr
+		SELECT 'STOCK' AS table_type, Q.stock_code, Q.query_type, I.stock_name_kr, I.stock_market
 		FROM KoreaInvest.stock_last_ws_query AS Q
 		JOIN KoreaInvest.stock_info AS I
 		ON Q.stock_code = I.stock_code
 	"""
 	coin_sql_query_str = """
-		SELECT 'Coin' AS table_type, Q.coin_code, Q.query_type, I.coin_name_kr
+		SELECT 'COIN' AS table_type, Q.coin_code, Q.query_type, I.coin_name_kr, 'COIN' AS stock_market
 		FROM Bithumb.coin_last_ws_query AS Q
 		JOIN Bithumb.coin_info AS I
 		ON Q.coin_code = I.coin_code
@@ -144,10 +144,10 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 	target_info_list = req_dict["list"]	# table_type, target_code, query_type
 
 	stock_insert_list = []
-	code_type_dict = {target_info[1]: target_info[2] for target_info in target_info_list if target_info[0] != "COIN"}
+	code_type_dict = {target_info[1]: target_info[2] for target_info in target_info_list if target_info[0].upper() != "COIN"}
 	if len(code_type_dict) > 0:
 		code_list = list(code_type_dict.keys())
-		code_strings = ','.join(['%s'] * len(code_list))
+		code_strings = ','.join([f"'{code}'" for code in code_list])
 		query_str = f"""
 			SELECT stock_code, stock_market
 			FROM KoreaInvest.stock_info
@@ -183,7 +183,7 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 					code,
 					query_type,
 					api_code,
-					f"{api_prefix}{api_code}",
+					f"{api_prefix}{code}",
 				))
 
 			elif query_type == "OD":
@@ -217,10 +217,10 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 				return 400, "invalid query_type detected", {}
 
 	coin_insert_list = []
-	code_type_dict = {target_info[1]: target_info[2] for target_info in target_info_list if target_info[0] == "COIN"}
+	code_type_dict = {target_info[1]: target_info[2] for target_info in target_info_list if target_info[0].upper() == "COIN"}
 	if len(code_type_dict) > 0:
 		code_list = list(code_type_dict.keys())
-		code_strings = ','.join(['%s'] * len(code_list))
+		code_strings = ','.join([f"'{code}'" for code in code_list])
 		query_str = f"""
 			SELECT coin_code
 			FROM Bithumb.coin_info
@@ -240,7 +240,7 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 					code,
 					query_type,
 					"transaction",
-					f"{api_code}_KRW",
+					f"{code}_KRW",
 				))
 
 			elif query_type == "OD":
@@ -252,7 +252,7 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 					code,
 					query_type,
 					"orderbooksnapshot",
-					f"{api_code}_KRW",
+					f"{code}_KRW",
 				))
 				
 			else:
@@ -264,10 +264,10 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 		"DELETE FROM Bithumb.coin_last_ws_query",
 	]
 	if len(stock_insert_list) > 0:
-		values_str = ', '.join([f"({', '.join(map(str, record))})" for record in stock_insert_list])
+		values_str = ', '.join([f"({", ".join([f"'{str(item)}'" for item in record])})" for record in stock_insert_list])
 		query_str_list.append(f"""INSERT INTO KoreaInvest.stock_last_ws_query VALUES {values_str}""")
 	if len(coin_insert_list) > 0:
-		values_str = ', '.join([f"({', '.join(map(str, record))})" for record in coin_insert_list])
+		values_str = ', '.join([f"({", ".join([f"'{str(item)}'" for item in record])})" for record in coin_insert_list])
 		query_str_list.append(f"""INSERT INTO Bithumb.coin_last_ws_query VALUES {values_str}""")
 
 	sql_code = await SqlManager.sql_manager.Set(query_str_list)
