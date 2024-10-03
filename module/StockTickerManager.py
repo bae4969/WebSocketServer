@@ -58,15 +58,19 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 	if len(search_str) < 2:
 		return 400, "keyword must be longer than 1", {}
 	
+	search_words = list(filter(None, search_str.split()))
+	stock_search_condition = ' AND '.join([f"stock_name_kr LIKE '%{word}%'" for word in search_words])
+	coin_search_condition = ' AND '.join([f"coin_name_kr LIKE '%{word}%'" for word in search_words])
+	
 	stock_sql_query_str = f"""
 		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market
 		FROM KoreaInvest.stock_info
-		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND (stock_code LIKE '{search_str}' OR stock_name_kr LIKE '{search_str}')
+		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND (stock_code LIKE '{search_str}%' OR ({stock_search_condition}))
 	"""
 	coin_sql_query_str = f"""
 		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market
 		FROM Bithumb.coin_info
-		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND (coin_code LIKE '{search_str}' OR coin_name_kr LIKE '{search_str}')
+		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND (coin_code LIKE '{search_str}%' OR ({coin_search_condition}))
 	"""
 
 	region = Util.TryGetDictStr(req_dict, "stock_region", "")
