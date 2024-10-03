@@ -11,12 +11,12 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 	
 	
 	stock_sql_query_str = f"""
-		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market
+		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market, stock_type
 		FROM KoreaInvest.stock_info
 		WHERE stock_update > NOW() - INTERVAL 2 WEEK
 	"""
 	coin_sql_query_str = f"""
-		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market
+		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market, 'COIN' AS stock_type
 		FROM Bithumb.coin_info
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK
 	"""
@@ -41,7 +41,10 @@ async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]
 	else:
 		query_str = stock_sql_query_str + " UNION " + coin_sql_query_str
 
-	query_str += f" ORDER BY stock_code LIMIT 100 OFFSET {offset * 100}"
+	if region == "COIN":
+		query_str += f" ORDER BY coin_code LIMIT 100 OFFSET {offset * 100}"
+	else:
+		query_str += f" ORDER BY stock_code LIMIT 100 OFFSET {offset * 100}"
 
 	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
 	if sql_code == 0:
@@ -63,12 +66,12 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 	coin_search_condition = ' AND '.join([f"coin_name_kr LIKE '%{word}%'" for word in search_words])
 	
 	stock_sql_query_str = f"""
-		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market
+		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market, stock_type
 		FROM KoreaInvest.stock_info
 		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND (stock_code LIKE '{search_str}%' OR ({stock_search_condition}))
 	"""
 	coin_sql_query_str = f"""
-		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market
+		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market, 'COIN' AS stock_type
 		FROM Bithumb.coin_info
 		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND (coin_code LIKE '{search_str}%' OR ({coin_search_condition}))
 	"""
@@ -93,7 +96,10 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 	else:
 		query_str = stock_sql_query_str + " UNION " + coin_sql_query_str
 
-	query_str += f" ORDER BY stock_code LIMIT 100 OFFSET {offset * 100}"
+	if region == "COIN":
+		query_str += f" ORDER BY coin_code LIMIT 100 OFFSET {offset * 100}"
+	else:
+		query_str += f" ORDER BY stock_code LIMIT 100 OFFSET {offset * 100}"
 
 	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
 	if sql_code == 0:
