@@ -61,12 +61,12 @@ async def SearchTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, di
 	stock_sql_query_str = f"""
 		SELECT 'STOCK' AS table_type, stock_code, stock_name_kr, stock_market
 		FROM KoreaInvest.stock_info
-		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND (stock_code LIKE '%{search_str}%' OR stock_name_kr LIKE '%{search_str}%' OR stock_name_en LIKE '%{search_str}%')
+		WHERE stock_update > NOW() - INTERVAL 2 WEEK AND (stock_code LIKE '{search_str}' OR stock_name_kr LIKE '{search_str}')
 	"""
 	coin_sql_query_str = f"""
 		SELECT 'COIN' AS table_type, coin_code, coin_name_kr, 'COIN' AS stock_market
 		FROM Bithumb.coin_info
-		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND (coin_code LIKE '%{search_str}%' OR coin_name_kr LIKE '%{search_str}%' OR coin_name_en LIKE '%{search_str}%')
+		WHERE coin_update > NOW() - INTERVAL 2 WEEK AND (coin_code LIKE '{search_str}' OR coin_name_kr LIKE '{search_str}')
 	"""
 
 	region = Util.TryGetDictStr(req_dict, "stock_region", "")
