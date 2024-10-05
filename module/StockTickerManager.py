@@ -114,13 +114,13 @@ async def GetRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int, st
 	
 
 	stock_sql_query_str = """
-		SELECT 'STOCK' AS table_type, Q.stock_code, Q.query_type, I.stock_name_kr, I.stock_market
+		SELECT 'STOCK' AS table_type, Q.stock_code, Q.query_type, I.stock_name_kr, I.stock_market, I.stock_type
 		FROM KoreaInvest.stock_last_ws_query AS Q
 		JOIN KoreaInvest.stock_info AS I
 		ON Q.stock_code = I.stock_code
 	"""
 	coin_sql_query_str = """
-		SELECT 'COIN' AS table_type, Q.coin_code, Q.query_type, I.coin_name_kr, 'COIN' AS stock_market
+		SELECT 'COIN' AS table_type, Q.coin_code, Q.query_type, I.coin_name_kr, 'COIN' AS stock_market, 'COIN' AS stock_type
 		FROM Bithumb.coin_last_ws_query AS Q
 		JOIN Bithumb.coin_info AS I
 		ON Q.coin_code = I.coin_code
