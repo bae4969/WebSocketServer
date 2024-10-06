@@ -14,9 +14,13 @@ import module.StockTickerManager as STM
 
 log_name:str = "WebSocketServer"
 send_lock = asyncio.Lock()
-async def safe_send(ws:websockets.WebSocketServerProtocol, message) -> None:
+async def safe_send(ws:websockets.WebSocketServerProtocol, rep_data:dict) -> None:
+	fail_data: dict = { "service": rep_data["service"], "result": 501, "msg": "server_error", "data":{} }
 	async with send_lock:
-		await ws.send(message)
+		try:
+			await ws.send(json.dumps(rep_data))
+		except:
+			await ws.send(json.dumps(fail_data))
 
 async def safe_recv(ws:websockets.WebSocketServerProtocol):
     try:
@@ -32,7 +36,7 @@ async def safe_recv(ws:websockets.WebSocketServerProtocol):
 
 async def handler_invalid_service(ws:websockets.WebSocketServerProtocol, req_service:str) -> None:
 	rep_data: dict = { "service": req_service, "result": 400, "msg": "invalid service", "data":{} }
-	await safe_send(ws, json.dumps(rep_data))
+	await safe_send(ws, rep_data)
 
 async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "auth", "result": 500, "msg": "server_error", "data":{} }
@@ -67,7 +71,7 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 			await asyncio.sleep(1)
 		
 		if need_to_rep == True:
-			await safe_send(ws, json.dumps(rep_data))
+			await safe_send(ws, rep_data)
 
 async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "wol", "result": 500, "msg": "server_error", "data":{} }
@@ -89,7 +93,7 @@ async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, r
 		rep_data["data"] = rep_dict
 
 	finally:
-		await safe_send(ws, json.dumps(rep_data))
+		await safe_send(ws, rep_data)
 
 async def handler_stm(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "stm", "result": 500, "msg": "server_error", "data":{} }
@@ -120,7 +124,7 @@ async def handler_stm(ws:websockets.WebSocketServerProtocol, client_info:dict, r
 		rep_data["data"] = rep_dict
 
 	finally:
-		await safe_send(ws, json.dumps(rep_data))
+		await safe_send(ws, rep_data)
 
 
 

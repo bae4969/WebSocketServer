@@ -291,7 +291,7 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 	if client_info["user_level"] > 3:
 		return 400, "invalid permission", {}
 	
-	table_type = req_dict["table_type"]
+	table_type = req_dict["table_type"].capitalize()
 	target_code = req_dict["target_code"].replace("/", "_")
 	year, week_num, week_day  = DateTime.now().isocalendar()
 	week_from = week_num
@@ -302,13 +302,14 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 		week_to = req_dict["week_to"]
 
 	query_str = f"""
-		SELECT *
+		SELECT DATE_FORMAT(execution_datetime, '%Y%m%d%H%i%s') AS execution_datetime, execution_open, execution_close, execution_min, execution_max, execution_non_volume, execution_ask_volume, execution_bid_volume
 		FROM Z_{table_type}{target_code}.Candle{year}
 		WHERE YEARWEEK(execution_datetime, 0)
 		BETWEEN CONCAT({year}, LPAD({week_from}, 2, '0')) AND CONCAT({year}, LPAD({week_to}, 2, '0'));
 	"""
 
 	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+
 	if sql_code == 0:
 		return 200, "success", { "candle" : sql_data }
 	else:
