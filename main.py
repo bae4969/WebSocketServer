@@ -36,6 +36,7 @@ async def handler_invalid_service(ws:websockets.WebSocketServerProtocol, req_ser
 
 async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "auth", "result": 500, "msg": "server_error", "data":{} }
+	need_to_rep = True
 	try:
 		if req_work == "login":
 			result, msg, rep_dict = await Auth.LoginUser(client_info, req_dict)
@@ -49,7 +50,7 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 		elif req_work == "varifiy":
 			result, msg, rep_dict = await Auth.VarifiyUser(client_info)
 			if client_info["is_good_man"] == True:
-				return
+				need_to_rep = False
 
 		else:
 			result = 400
@@ -64,7 +65,9 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 	finally:
 		if client_info["is_good_man"] == False:
 			await asyncio.sleep(1)
-		await safe_send(ws, json.dumps(rep_data))
+		
+		if need_to_rep == True:
+			await safe_send(ws, json.dumps(rep_data))
 
 async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "wol", "result": 500, "msg": "server_error", "data":{} }
@@ -102,7 +105,10 @@ async def handler_stm(ws:websockets.WebSocketServerProtocol, client_info:dict, r
 
 		elif req_work == "update_regi_list":
 			result, msg, rep_dict = await STM.UpdateRegistedQueryList(client_info, req_dict)
-
+		
+		elif req_work == "get_candle_data":
+			result, msg, rep_dict = await STM.GetCandleData(client_info, req_dict)
+		
 		else:
 			result = 400
 			msg = "invalid service type"

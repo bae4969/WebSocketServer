@@ -296,7 +296,7 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 	year, week_num, week_day  = DateTime.now().isocalendar()
 	week_from = week_num
 	week_to = week_num
-	if "yaer" in req_dict and "week_from" in req_dict and "week_to" in req_dict:
+	if "year" in req_dict and "week_from" in req_dict and "week_to" in req_dict:
 		year = req_dict["year"]
 		week_from = req_dict["week_from"]
 		week_to = req_dict["week_to"]
