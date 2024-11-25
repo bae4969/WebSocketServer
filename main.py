@@ -46,13 +46,13 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 			result, msg, rep_dict = await Auth.LoginUser(client_info, req_dict)
 
 		elif req_work == "logout":
-			result, msg, rep_dict = await Auth.LogoutUser(client_info)
+			result, msg, rep_dict = await Auth.LogoutUser(client_info, req_dict)
 
 		elif req_work == "ping":
-			result, msg, rep_dict = await Auth.PingUser(client_info)
+			result, msg, rep_dict = await Auth.PingUser(client_info, req_dict)
 
 		elif req_work == "varifiy":
-			result, msg, rep_dict = await Auth.VarifiyUser(client_info)
+			result, msg, rep_dict = await Auth.VarifiyUser(client_info, req_dict)
 			if client_info["is_good_man"] == True:
 				need_to_rep = False
 
@@ -135,6 +135,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 		"login_index" : id(ws),
 		"login_ip" : ws.remote_address[0],
 		"login_env" : "--",
+		"login_hash" : "0000000000000000000000000000000000000000000000000000000000000000",
 		"is_good_man": False,
 		"user_id" : "(empty)",
 		"user_index" : -1,
@@ -153,7 +154,11 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 			raise Exception("invalid authorization")
 
 		Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' login [ {log_postfix} ]")
-		while ws.closed == False and client_info["is_good_man"] == True:
+		while (
+				ws.closed == False and
+				client_info["is_good_man"] == True and
+				(DateTime.now() - client_info["ping"]).seconds < Define.WS_LATE_PING_SEC
+			):
 			try:
 				req_data = await safe_recv(ws)
 				req_service:str = req_data["service"]
@@ -162,7 +167,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 				if req_service == "late":
 					continue
 
-				await handler_auth(ws, client_info, "varifiy", {})
+				await handler_auth(ws, client_info, "varifiy", req_dict)
 				if client_info["is_good_man"] == False:
 					Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' fail to varifiy [ {log_postfix} ]")
 					break
@@ -181,10 +186,6 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 
 			except:
 				pass
-						
-			delta_sec = (DateTime.now() - client_info["ping"]).seconds
-			if delta_sec > Define.WS_LATE_PING_SEC:
-				raise Exception("Detected late ping")
 
 				
 	except Exception as ex:
