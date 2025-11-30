@@ -274,10 +274,10 @@ async def UpdateRegistedQueryList(client_info:dict, req_dict:dict) -> tuple[int,
 		"DELETE FROM Bithumb.coin_last_ws_query",
 	]
 	if len(stock_insert_list) > 0:
-		values_str = ', '.join([f"({", ".join([f"'{str(item)}'" for item in record])})" for record in stock_insert_list])
+		values_str = ', '.join([f"({', '.join([str(item) for item in record])})" for record in stock_insert_list])
 		query_str_list.append(f"""INSERT INTO KoreaInvest.stock_last_ws_query VALUES {values_str}""")
 	if len(coin_insert_list) > 0:
-		values_str = ', '.join([f"({", ".join([f"'{str(item)}'" for item in record])})" for record in coin_insert_list])
+		values_str = ', '.join([f"({', '.join([str(item) for item in record])})" for record in coin_insert_list])
 		query_str_list.append(f"""INSERT INTO Bithumb.coin_last_ws_query VALUES {values_str}""")
 
 	sql_code = await SqlManager.sql_manager.Set(query_str_list)

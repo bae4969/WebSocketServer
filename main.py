@@ -153,7 +153,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 		if client_info["is_good_man"] == False:
 			raise Exception("invalid authorization")
 
-		Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' login [ {log_postfix} ]")
+		Util.InsertLog(log_name, "N", f"User '{client_info['user_id']}({client_info['user_index']})' login [ {log_postfix} ]")
 		while (
 				ws.closed == False and
 				client_info["is_good_man"] == True and
@@ -169,7 +169,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 
 				await handler_auth(ws, client_info, "varifiy", req_dict)
 				if client_info["is_good_man"] == False:
-					Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' fail to varifiy [ {log_postfix} ]")
+					Util.InsertLog(log_name, "N", f"User '{client_info['user_id']}({client_info['user_index']})' fail to varifiy [ {log_postfix} ]")
 					break
 				
 				if req_service == "auth":
@@ -194,7 +194,7 @@ async def handler_main(ws:websockets.WebSocketServerProtocol, path:str):
 		try:
 			if client_info["user_index"] >= 0:
 				await handler_auth(ws, client_info, "logout", {})
-				Util.InsertLog(log_name, "N", f"User '{client_info["user_id"]}({client_info["user_index"]})' logout [ {log_postfix} ]")
+				Util.InsertLog(log_name, "N", f"User '{client_info['user_id']}({client_info['user_index']})' logout [ {log_postfix} ]")
 		except:
 			pass
 		Util.InsertLog(
