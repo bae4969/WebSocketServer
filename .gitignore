@@ -1,4 +1,6 @@
 __pycache__/
+.github/
+.vscode/
 doc/
 test/
 temp/

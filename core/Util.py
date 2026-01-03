@@ -67,20 +67,20 @@ class MySqlLogger:
 						cursor.execute(create_table_query)
 
 					name = t_log["NAME"].replace("'", '"')
-					type = t_log["TYPE"].replace("'", '"')
+					log_type = t_log["TYPE"].replace("'", '"')
 					msg = t_log["MSG"].replace("'", '"')
 					func = t_log["FUNC"].replace("'", '"')
-					file = t_log["FILE"].replace("'", '"')
+					log_file = t_log["FILE"].replace("'", '"')
 					line = t_log["LINE"]
      
 					insert_query = f"""
 					INSERT INTO {table_name} (log_name, log_type, log_message, log_function, log_file, log_line)
-					VALUES ('{name}', '{type}', '{msg}', '{func}', '{file}', '{line}');
+					VALUES (%s, %s, %s, %s, %s, %s);
 					"""
+
+					cursor.execute(insert_query, (name, log_type, msg, func, log_file, line))
      
-					cursor.execute(insert_query)
-     
-					print(f"[{name}] |{type}| {msg} ({func}|{file}:{line})")
+					print(f"[{name}] |{log_type}| {msg} ({func}|{log_file}:{line})")
      
 				except Exception as ex:
 					print(ex.__str__())
@@ -105,6 +105,8 @@ logger_obj:MySqlLogger = MySqlLogger(
 	Define.SQL_ID,
 	Define.SQL_PW
 )
+
+
 def InsertLog(name:str, type:str, msg:str) -> None:
 	filepath = inspect.stack()[1][1]
 	filename = filepath[filepath.rfind("/") + 1:]
@@ -119,38 +121,36 @@ def InsertLog(name:str, type:str, msg:str) -> None:
 	)
 
 
-
 def TryGetDictStr(dict, key, default_value="") -> str:
-    try:
-        return dict[key]
-    except:
-        return default_value
-    
+	try:
+		return dict[key]
+	except:
+		return default_value
+	
 
 def TryGetDictInt(dict, key, default_value=0) -> int:
-    try:
-        return int(dict[key])
-    except:
-        return default_value
-    
+	try:
+		return int(dict[key])
+	except:
+		return default_value
+	
 
 def TryGetDictFloat(dict, key, default_value=0.0) -> float:
-    try:
-        return float(dict[key])
-    except:
-        return default_value
-    
-
+	try:
+		return float(dict[key])
+	except:
+		return default_value
+	
 
 def TryParseInt(value, default_value=0) -> int:
-    try:
-        return int(value)
-    except:
-        return default_value
-    
+	try:
+		return int(value)
+	except:
+		return default_value
+	
 
 def TryParseFloat(value, default_value=0.0) -> float:
-    try:
-        return float(value)
-    except:
-        return default_value
+	try:
+		return float(value)
+	except:
+		return default_value

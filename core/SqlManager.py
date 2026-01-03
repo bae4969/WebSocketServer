@@ -5,6 +5,13 @@ import pymysql
 
 class SqlManager:
 	__sql_pool = None
+
+	@staticmethod
+	def _normalize_query_item(item):
+		# Supports both legacy list[str] and new list[tuple[str, tuple|list|dict]]
+		if isinstance(item, tuple) and len(item) == 2:
+			return item[0], item[1]
+		return item, None
 	
 	async def Init(self) -> bool:
 		try:
@@ -37,54 +44,53 @@ class SqlManager:
 			return False
 		
 
-	async def Set(self, query_str_list:list[str]) -> int:
+	async def Set(self, query_str_list:list) -> int:
 		try:
-			code = -1
 			async with self.__sql_pool.acquire() as conn:
 				async with conn.cursor() as cur:
 					try:
 						await conn.begin()
-						for query_str in query_str_list:
-							await cur.execute(query_str)
+						for item in query_str_list:
+							query_str, params = self._normalize_query_item(item)
+							if params is None:
+								await cur.execute(query_str)
+							else:
+								await cur.execute(query_str, params)
 						await conn.commit()
-						code = 0
-
+						return 0
 					except pymysql.err.IntegrityError as ex:
 						await conn.rollback()
-						code = ex.args[0]
-
+						return ex.args[0]
 					except:
 						await conn.rollback()
-						code = -1
-
-
-			return code
-		
+						return -1
 		except:
 			return -1
 		
 
-	async def Get(self, query_str:str) -> tuple[int, list]:
+	async def Get(self, query_str:str, params=None) -> tuple[int, list]:
 		try:
-			code = -1
-			data = []
 			async with self.__sql_pool.acquire() as conn:
 				async with conn.cursor() as cur:
 					try:
-						await cur.execute(query_str)
+						if params is None:
+							await cur.execute(query_str)
+						else:
+							await cur.execute(query_str, params)
 						data = await cur.fetchall()
-						code = 0
-
+						return 0, data
 					except pymysql.err.IntegrityError as ex:
-						await conn.rollback()
-						code = ex.args[0]
-
+						try:
+							await conn.rollback()
+						except:
+							pass
+						return ex.args[0], []
 					except:
-						await conn.rollback()
-						code = -1
-
-			return code, data
-
+						try:
+							await conn.rollback()
+						except:
+							pass
+						return -1, []
 		except:
 			return -1, []
 		
@@ -92,10 +98,6 @@ class SqlManager:
 
 sql_manager = SqlManager()
 
+
 async def InitSql() -> bool:
 	return await sql_manager.Init()
-	
-	
-
-
-

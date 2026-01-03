@@ -1,5 +1,5 @@
-import module.Util as Util
-import module.SqlManager as SqlManager
+import core.Util as Util
+import core.SqlManager as SqlManager
 import pymysql
 import hashlib
 import os
@@ -13,8 +13,8 @@ async def LoginUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 
 	id_str = req_dict["id"].replace("'", "")
 	pw_str = req_dict["pw"].replace("'", "")
-	query_str = f"SELECT user_index, user_level, user_state FROM Blog.user_list WHERE user_id='{id_str}' and user_pw='{pw_str}'"
-	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
+	query_str = "SELECT user_index, user_level, user_state FROM Blog.user_list WHERE user_id=%s and user_pw=%s"
+	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str, (id_str, pw_str))
 	
 	if len(sql_data) == 0:
 		return 500, "not exist", {}
@@ -28,13 +28,20 @@ async def LoginUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 	if client_info["is_good_man"] == False:
 		return 500, "invalid user state", {}
 	
-	query_str_list = [f"""
+	query_str_list = [(
+		"""
 		INSERT INTO Blog.user_login (user_index, login_index, login_datetime, login_env, login_ip)
-		VALUES ({client_info["user_index"]}, {client_info["login_index"]}, NOW(), '{client_info["login_env"]}', '{client_info["login_ip"]}')"""]
+		VALUES (%s, %s, NOW(), %s, %s)
+		""",
+		(client_info["user_index"], client_info["login_index"], client_info["login_env"], client_info["login_ip"]),
+	)]
 	sql_code = await SqlManager.sql_manager.Set(query_str_list)
 
 	if sql_code == 0:
-		query_str_list = [f"""UPDATE Blog.user_list SET user_last_action_datetime=NOW() WHERE user_index='{client_info["user_index"]}'"""]
+		query_str_list = [(
+			"""UPDATE Blog.user_list SET user_last_action_datetime=NOW() WHERE user_index=%s""",
+			(client_info["user_index"],),
+		)]
 		await SqlManager.sql_manager.Set(query_str_list)
 		return 200, "success", { "login_hash" : client_info["login_hash"] }
 	
@@ -47,7 +54,10 @@ async def LoginUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 
 
 async def LogoutUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
-	query_str_list = [f"""DELETE FROM Blog.user_login WHERE user_index='{client_info["user_index"]}'"""]
+	query_str_list = [(
+		"""DELETE FROM Blog.user_login WHERE user_index=%s""",
+		(client_info["user_index"],),
+	)]
 	sql_code = await SqlManager.sql_manager.Set(query_str_list)
 	if sql_code == 0:
 		return 200, "success", {}
@@ -65,8 +75,8 @@ async def PingUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 
 async def VarifiyUser(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
 	try:
-		query_str_list = f"""SELECT COUNT(*) FROM Blog.user_login WHERE user_index={client_info["user_index"]}"""
-		sql_code, sql_data = await SqlManager.sql_manager.Get(query_str_list)
+		query_str = """SELECT COUNT(*) FROM Blog.user_login WHERE user_index=%s"""
+		sql_code, sql_data = await SqlManager.sql_manager.Get(query_str, (client_info["user_index"],))
 		client_info["is_good_man"] = sql_data[0][0] > 0 and client_info["login_hash"] == req_dict["login_hash"]
 		return 200, "success", {}
 	except:

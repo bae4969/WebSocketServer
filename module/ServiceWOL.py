@@ -1,5 +1,5 @@
-import module.Util as Util
-import module.SqlManager as SqlManager
+import core.Util as Util
+import core.SqlManager as SqlManager
 from doc import Define
 import struct
 import socket

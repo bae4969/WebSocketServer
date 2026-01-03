@@ -4,8 +4,8 @@ import json
 from datetime import datetime as DateTime
 
 import doc.Define as Define
-import module.Util as Util
-import module.SqlManager as SqlManager
+import core.Util as Util
+import core.SqlManager as SqlManager
 import module.Auth as Auth
 import module.ServiceWOL as WOL
 import module.StockTickerManager as STM
@@ -20,17 +20,40 @@ async def safe_send(ws:websockets.WebSocketServerProtocol, rep_data:dict) -> Non
 		try:
 			await ws.send(json.dumps(rep_data))
 		except:
-			await ws.send(json.dumps(fail_data))
+			try:
+				await ws.send(json.dumps(fail_data))
+			except:
+				pass
 
 async def safe_recv(ws:websockets.WebSocketServerProtocol):
-    try:
-        return json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
-    except asyncio.TimeoutError:
-        return {
+	try:
+		return json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
+	except (asyncio.TimeoutError, json.JSONDecodeError, websockets.exceptions.ConnectionClosed):
+		return {
 			"service" : "late",
 			"work" : "err",
 			"data" : {}
 		}
+	except:
+		return {
+			"service" : "late",
+			"work" : "err",
+			"data" : {}
+		}
+
+
+def _invalid_service_type() -> tuple[int, str, dict]:
+	return 400, "invalid service type", {}
+
+
+async def _dispatch_work(req_work: str, mapping: dict, client_info: dict, req_dict: dict) -> tuple[int, str, dict]:
+	try:
+		func = mapping.get(req_work)
+		if func is None:
+			return _invalid_service_type()
+		return await func(client_info, req_dict)
+	except:
+		return 500, "server_error", {}
 
 
 
@@ -76,16 +99,15 @@ async def handler_auth(ws:websockets.WebSocketServerProtocol, client_info:dict, 
 async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "wol", "result": 500, "msg": "server_error", "data":{} }
 	try:
-		if req_work == "list":
-			result, msg, rep_dict = await WOL.GetWOLList(client_info, req_dict)
-
-		elif req_work == "execute":
-			result, msg, rep_dict = await WOL.ExecuteWOL(client_info, req_dict)
-
-		else:
-			result = 400
-			msg = "invalid service type"
-			rep_dict = {}
+		result, msg, rep_dict = await _dispatch_work(
+			req_work,
+			{
+				"list": WOL.GetWOLList,
+				"execute": WOL.ExecuteWOL,
+			},
+			client_info,
+			req_dict,
+		)
 
 		
 		rep_data["result"] = result
@@ -98,25 +120,18 @@ async def handler_wol(ws:websockets.WebSocketServerProtocol, client_info:dict, r
 async def handler_stm(ws:websockets.WebSocketServerProtocol, client_info:dict, req_work:str, req_dict:dict) -> None:
 	rep_data: dict = { "service": "stm", "result": 500, "msg": "server_error", "data":{} }
 	try:
-		if req_work == "get_tot_list":
-			result, msg, rep_dict = await STM.GetTotalList(client_info, req_dict)
-
-		elif req_work == "search_tot_list":
-			result, msg, rep_dict = await STM.SearchTotalList(client_info, req_dict)
-
-		elif req_work == "get_regi_list":
-			result, msg, rep_dict = await STM.GetRegistedQueryList(client_info, req_dict)
-
-		elif req_work == "update_regi_list":
-			result, msg, rep_dict = await STM.UpdateRegistedQueryList(client_info, req_dict)
-		
-		elif req_work == "get_candle_data":
-			result, msg, rep_dict = await STM.GetCandleData(client_info, req_dict)
-		
-		else:
-			result = 400
-			msg = "invalid service type"
-			rep_dict = {}
+		result, msg, rep_dict = await _dispatch_work(
+			req_work,
+			{
+				"get_tot_list": STM.GetTotalList,
+				"search_tot_list": STM.SearchTotalList,
+				"get_regi_list": STM.GetRegistedQueryList,
+				"update_regi_list": STM.UpdateRegistedQueryList,
+				"get_candle_data": STM.GetCandleData,
+			},
+			client_info,
+			req_dict,
+		)
 
 		
 		rep_data["result"] = result
