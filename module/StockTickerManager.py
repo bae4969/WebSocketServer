@@ -1,8 +1,6 @@
 import module.Util as Util
 import module.SqlManager as SqlManager
-from datetime import datetime as DateTime
-from datetime import timedelta as TimeDelta
-
+from datetime import datetime
 
 
 async def GetTotalList(client_info:dict, req_dict:dict) -> tuple[int, str, dict]:
@@ -293,19 +291,22 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 	
 	table_type = req_dict["table_type"].capitalize()
 	target_code = req_dict["target_code"].replace("/", "_")
-	year, week_num, week_day  = DateTime.now().isocalendar()
-	week_from = week_num
-	week_to = week_num
-	if "year" in req_dict and "week_from" in req_dict and "week_to" in req_dict:
-		year = req_dict["year"]
-		week_from = req_dict["week_from"]
-		week_to = req_dict["week_to"]
+	
+	# Python isocalendar는 월요일 시작이므로 MySQL Mode 0(일요일 시작)과 맞추기 위해 기본값 처리 유의
+	now = datetime.now()
+	year = req_dict.get("year", now.year)
+	week_from = req_dict.get("week_from", now.isocalendar()[1])
+	week_to = req_dict.get("week_to", now.isocalendar()[1])
 
+	# SQL 수정: YEARWEEK 대신 WEEK 사용 (1월 초 데이터 누락 방지)
+	# WEEK(date, 0) + 1을 하면 1월 1일~첫 일요일 구간이 1주차가 됩니다.
 	query_str = f"""
-		SELECT DATE_FORMAT(execution_datetime, '%Y%m%d%H%i%s') AS execution_datetime, execution_open, execution_close, execution_min, execution_max, execution_non_volume, execution_ask_volume, execution_bid_volume
+		SELECT 
+			DATE_FORMAT(execution_datetime, '%Y%m%d%H%i%s') AS execution_datetime, 
+			execution_open, execution_close, execution_min, execution_max, 
+			execution_non_volume, execution_ask_volume, execution_bid_volume
 		FROM Z_{table_type}{target_code}.Candle{year}
-		WHERE YEARWEEK(execution_datetime, 0)
-		BETWEEN CONCAT({year}, LPAD({week_from}, 2, '0')) AND CONCAT({year}, LPAD({week_to}, 2, '0'));
+		WHERE WEEK(execution_datetime, 0) + 1 BETWEEN {week_from} AND {week_to};
 	"""
 
 	sql_code, sql_data = await SqlManager.sql_manager.Get(query_str)
@@ -314,6 +315,5 @@ async def GetCandleData(client_info:dict, req_dict:dict) -> tuple[int, str, dict
 		return 200, "success", { "candle" : sql_data }
 	else:
 		return 500, "fail to get data", { "candle" : sql_data }
-
 	
 
